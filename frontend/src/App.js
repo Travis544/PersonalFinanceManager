@@ -20,11 +20,14 @@ function App() {
     
   };
 
-  const exchangePublicTokenForAccessToken= async (publicToken) =>{
+  const exchangePublicTokenForAccessToken= async (publicToken, metadata) =>{
 
     let requestData = {
-      "public_token": publicToken
+      "public_token": publicToken,
+      "institution_id":metadata.institution.institution_id,
+      "accounts": metadata.accounts
     }
+    
     const response = await fetch(`${API_URL}/api/exchange_public_token`, {
       method: 'POST',
       headers: {
@@ -38,7 +41,6 @@ function App() {
     console.log(data)
   }
 
-
   useEffect(() => {
     
     generateToken();
@@ -49,23 +51,13 @@ function App() {
     console.log(linkToken)
   }, [linkToken])
 
-  const handleOnSuccess= (public_token, metadata) =>{
-    // send token to client server
-    // axios.post("/auth/public_token", {
-    //   public_token: public_token
-    // });
-  }
-
-  const handleOnExit=() =>{
-    // handle the case when your user exits Link
-    // For the sake of this tutorial, we're not going to be doing anything here.
-  }
 
   const { open, ready } = usePlaidLink({
     token: linkToken, 
     onSuccess: (public_token, metadata) => {
       // send public_token to server
-      exchangePublicTokenForAccessToken(public_token)
+      console.log(metadata)
+      exchangePublicTokenForAccessToken(public_token, metadata)
 
     },
   });
