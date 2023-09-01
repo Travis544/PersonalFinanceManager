@@ -17,15 +17,15 @@ class Plaid {
     }
 
 
-    async getTransactions(itemId, accessToken, lastCursor){
+    async getTransactions(transactionService, itemId, accessToken, lastCursor){
         // let item = await itemService.getItem(itemId)
-        // console.log(item)
         let added = [];
         let modified = [];
         // Removed transaction ids
         let removed = [];
         let hasMore = true;
         
+        console.log("GETTING TRANSACTIONS.... Using cursor:"+lastCursor)
         const batchSize = 100;
         while (hasMore) {
             const request = {
@@ -37,17 +37,39 @@ class Plaid {
             const response = await this.client.transactionsSync(request);
             const data = response.data;
             // Add this page of results
+            
+            data.added = this.sanitizeTransaction(data.added)
             added = added.concat(data.added);
+            data.modified = this.sanitizeTransaction(data.modified)
             modified = modified.concat(data.modified);
+          
             removed = removed.concat(data.removed);
             hasMore = data.has_more;
             // Update cursor to the next cursor
             lastCursor = data.next_cursor;
         }
 
+
         await itemService.saveLastCursor(itemId,lastCursor )
-        console.log(added)
+        await transactionService.applyTransactionUpdates(itemId, added, modified, removed)
+       
+      
         
+    }
+
+
+     sanitizeTransaction(transactionData){
+
+        if("personal_finance_category" in transactionData) {
+            transactionData["single_category"] = transactionData["personal_finance_category"]["primary"]
+        }else{
+            transactionData["single_category"]= "N/A"
+        }
+
+        console.log('SINGLE CATEGORY')
+        console.log(transactionData["single_category"])
+        console.log(transactionData["personal_finance_category"])
+        return transactionData
     }
 
 

@@ -15,7 +15,7 @@ function App() {
      
     });
     const data = await response.json();
-    console.log(data)
+   
     setLinkToken(data.link_token);
     
   };
@@ -27,7 +27,7 @@ function App() {
       "institution_id":metadata.institution.institution_id,
       "accounts": metadata.accounts
     }
-    
+
     const response = await fetch(`${API_URL}/api/exchange_public_token`, {
       method: 'POST',
       headers: {

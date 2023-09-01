@@ -5,7 +5,9 @@ const plaid = require("./plaid");
 const {
   Item,
   User,
-  MongoDbItemService
+  MongoDbItemService, 
+  MongoDbAccountService,
+  MongoDbTransanctionService
 } = require('./db/database');
 
 const PORT = process.env.PORT || 3001;
@@ -32,7 +34,8 @@ app.use(session({
 //SET UP PLAID AND DB SERVICE
 plaid.createPlaidClient()
 itemService = new MongoDbItemService()
-
+accountService = new MongoDbAccountService()
+transactionService = new MongoDbTransanctionService()
 
 app.listen(PORT,  () => {
   console.log(`Server listening on ${PORT}`);
@@ -44,12 +47,12 @@ app.get("/", function(request, response) {
   response.json({"MESSAGE":"HI"})
 })
 
-app.post('/api/fuckYou', async function (
-){
-  const user = new User({ username:"Travis", items:[]})
-  const item = new Item({itemId: "SOME STUFF", accessToken: "ACCESS", institutionId: "SOME INSTITUTION"})
-  const saveRes = await itemService.saveItem(user,item)
-})
+// app.post('/api/fuckYou', async function (
+// ){
+//   const user = new User({ username:"Travis", items:[]})
+//   const item = new Item({itemId: "SOME STUFF", accessToken: "ACCESS", institutionId: "SOME INSTITUTION"})
+//   const saveRes = await itemService.saveItem(user,item)
+// })
 
 app.post('/api/create_link_token',cors(corsOptions),  async function (request, response) {
     // Get the client_user_id by searching for the current user
@@ -70,8 +73,6 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
     //   const createTokenResponse = await client.linkTokenCreate(requestC);
     //   response.json(createTokenResponse.data);
         const createResponse = await plaid.createLinkToken(requestC)
-        console.log("REQUEST RETURNED")
-        console.log(createResponse.data)
         response.json(createResponse.data);
     } catch (error) {
       // handle error
@@ -80,7 +81,7 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
     }
   });
   
-  main().catch(err => console.log(err));
+  main().catch(err => console.log("RECEIVED ERROR"));
 
   async function main() {
     itemService.initialize()
@@ -88,14 +89,23 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
 
   async function isAlreadyLinkedToBank(user, institutionId){
     const item = await itemService.getItemByInstitutionId(user, institutionId)
-    console.log("ITEM FOUND", item)
     if (item != null){
       return true
     }else{
       return false
     }
   }
+
   
+  app.post("/api/simulate_webhook", async (req, res)=>{
+    
+  })
+  
+  app.post('/api/receive_webhook', async (req, res, next)=>{
+
+  })
+
+
   app.post('/api/exchange_public_token',cors(corsOptions), async function (
     request,
     response,
@@ -106,11 +116,17 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
     const accounts = request.body.accounts
     const username = "travis"
   
+    // console.log(accounts)
     //use fake user for now
     const user = await itemService.getUser(username)
-    if (await isAlreadyLinkedToBank(user, institutionId)){
-        response.status(409).json({error: "Already linked to this bank"});
-        console.log("ALREADY LINKED TO THIS BANK ")
+    if (user == null) {
+      return
+    }
+
+    const itemFound = await itemService.getItemByInstitutionId(user, institutionId)
+    if (itemFound != null){
+       //response.status(409).json({error: "Already linked to this bank"});
+        await plaid.getTransactions(transactionService, itemFound.itemId, itemFound.accessToken, itemFound.lastCursor)
         return
     } else {
       try {
@@ -122,23 +138,16 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
         const accessToken = plaidResponse.data.access_token;
         const itemID = plaidResponse.data.item_id;
         
-        console.log("GOT ACCESS TOKEN")
-        console.log(accessToken)
-        console.log(itemID)
-       
         const item = new Item({itemId: itemID, accessToken: accessToken, institutionId: institutionId, lastCursor:null})
-        const saveRes = await itemService.saveItem(user,item)
+        const saveRes = await itemService.saveItem( user,item)
+        const saveAccountRes = await accountService.saveAccounts(accounts)
         
-        console.log("ITEM ID!!"+itemID)
         //this is a new user, so retrieve transactions and save to db.
-        await plaid.getTransactions(itemId, accessToken, null)
+        await plaid.getTransactions(transactionService, itemID, accessToken, null)
   
-        console.log("SAVE RSULT")
-        console.log(saveRes)
         response.json({ public_token_exchange: 'complete' });
       } catch (error) {
         // handle error
-        console.log(error)
       }
     }
   });

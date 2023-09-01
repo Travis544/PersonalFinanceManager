@@ -20,32 +20,34 @@ const AccountSchema = new mongoose.Schema({
     accountId: String,
     name: String,
     type: String,
-    subType: String
+    subtype: String
 })
 
 const TransactionSchema = new mongoose.Schema({
     transactionId : String,
     accountId : String,
-    category : String,
+    category : [String],
+    personalFinanceCategory: Map,
     name: String,
     merchant : String,
     amount : Number, 
+    
+
     date : Date
 })
 
 const Item = mongoose.model("Item", ItemSchema)
 const User = mongoose.model("User", UserSchema)
 const Account = mongoose.model("Account", AccountSchema)
-const Transaction = mongoose.model("Account", AccountSchema)
+const Transaction = mongoose.model("Transaction", TransactionSchema)
 
 class Service{
     constructor(){
-        this.uri = `mongodb+srv://travis544:${MONGO_DB_PASSWORD}@financedb.pj94cfj.mongodb.net/financeDb`
+         const MONGO_DB_PASSWORD = process.env.MONGO_DB_PASSWORD
+        
     }
 
-    async initialize(){
-        await mongoose.connect(this.uri);   
-    }
+  
 }
 
 
@@ -53,8 +55,8 @@ class MongoDbItemService extends Service{
     constructor(){
         super()
         const MONGO_DB_PASSWORD = process.env.MONGO_DB_PASSWORD
-        this.uri = `mongodb+srv://travis544:${MONGO_DB_PASSWORD}@financedb.pj94cfj.mongodb.net/?retryWrites=true&w=majority`;
-       
+       // this.uri = `mongodb+srv://travis544:${MONGO_DB_PASSWORD}@financedb.pj94cfj.mongodb.net/?retryWrites=true&w=majority`;
+       this.uri = `mongodb+srv://travis544:${MONGO_DB_PASSWORD}@financedb.pj94cfj.mongodb.net/financeDb`
     }
 
     // async run() {
@@ -70,9 +72,13 @@ class MongoDbItemService extends Service{
     //     }
     // }
 
+    async initialize(){
+        await mongoose.connect(this.uri);   
+    }
+
 
     async getUser(username) {
-        return await  User.findOne({username: username}).populate("items")
+        return await User.findOne({username: username}).populate("items")
     }
 
     async getItemByInstitutionId(user, institutionId){
@@ -82,7 +88,7 @@ class MongoDbItemService extends Service{
             return null
         }
 
-        console.log(userFound)
+        
         const itemFound = userFound.items.filter(function (item) {
             return item.institutionId === institutionId;
         }).pop();
@@ -93,20 +99,14 @@ class MongoDbItemService extends Service{
 
     async saveItem(user, item){
        
-        console.log("SAVING ITEM>......")
-        // console.log(user)
-        // await this.client.connect()
-        // let found =  await this.client.db("financeDb").collection("User").findOne(
-        //     { _id: (user.id)}
-        // )
-       
+    
         user.items.push(item)
         try {
-           return res = await user.save();
+           return await user.save();
            
         } catch (err) {
             err.message; // '#sadpanda'
-            console.log(err.message)
+         
         }
         // return this.client.db("financeDb").collection("User").updateOne(
         //     { _id: user.id},
@@ -116,6 +116,9 @@ class MongoDbItemService extends Service{
     }
 
     async saveLastCursor(itemId, lastCursor) {
+
+        console.log("SAVING LAST CURSOR")
+        console.log(lastCursor)
         //await mongoose.connect(this.uri);   
         const res = await Item.updateOne({itemId: itemId}, {lastCursor: lastCursor})
         return res
@@ -125,6 +128,7 @@ class MongoDbItemService extends Service{
 
 class MongoDbAccountService extends Service{
     constructor(){
+        super()
     }
 
     async saveAccount(accountId, itemId, name, type, subType){
@@ -132,21 +136,93 @@ class MongoDbAccountService extends Service{
         await account.save()
     }
 
+    async saveAccounts(accountInfos) {
+        const infoArr = accountInfos.map((accountInfo, index)=>{
+            const {
+                id: accountId, 
+                name, 
+                type,
+                subtype
+            } = accountInfo
+
+           // const account = new Account({accountId:accountId, name:name, type: type, subType:subType})
+           return {accountId:accountId, name:name, type: type, subtype:subtype}
+        })
+
+        Account.insertMany(infoArr)
+    }
+
 }
 
 
 class MongoDbTransanctionService extends Service{
     constructor(){
-
+        super()
     }
 
     async applyTransactionUpdates(itemId, newTransactions, modifiedTransactions, deletedTransactions) {
-        
+        await this.saveTransactions(newTransactions)
+        await this.updateTransactions(modifiedTransactions)
+        await this.deleteTransactions(deletedTransactions)
     }
 
     async saveTransactions(newTransactions){
-        Transaction.insertMany(newTransactions)
+        const newTransactionPromises = newTransactions.map((newTransaction, index) => {
+            const {
+                account_id,
+                transaction_id,
+                category_id,
+                category,
+                payment_channel,
+                name,
+                amount,
+                iso_currency_code,
+                unofficial_currency_code,
+                date,
+                pending,
+                account_owner,
+                merchant_name,
+               
+                single_category,
+                personal_finance_category
+            } = newTransaction;
+
+            const transaction = new Transaction({
+                transactionId:transaction_id,
+                accountId: account_id, 
+                category: category,
+                personalFinanceCategory: personal_finance_category,
+                name: name,
+                merchant: merchant_name,
+                amount:amount,
+                date: date
+            })
+
+           // console.log("GOT SINGLE CATEGORY OF" + single_category)
+
+            return transaction.save()
+        })
+
+        // transactionId : String,
+        // accountId : String,
+        // category : String,
+        // name: String,
+        // merchant : String,
+        // amount : Number, 
+        // date : Date
+        Promise.all(newTransactionPromises)
+        .then((results) => {
+            results.forEach((result, index) => {
+        
+            });
+        })
+        .catch((error) => {
+            console.error('Error inserting transactions:', error);
+        });
+
     }
+
+
 
     async updateTransactions(updatedTransactions){
         const updatePromises = updatedTransactions.map((updateTransaction, index) => {
@@ -155,7 +231,7 @@ class MongoDbTransanctionService extends Service{
                 transaction_id,
                 category_id,
                 category,
-                transaction_type,
+                payment_channel,
                 name,
                 amount,
                 iso_currency_code,
@@ -168,29 +244,45 @@ class MongoDbTransanctionService extends Service{
 
             const queryCriteria = {transactionId: transaction_id}
             const queryOperation = {$set: 
-                {category: category, amount: amount, merchant: merchant_name }
-            
+                {category: category, 
+                amount: amount, 
+                merchant: merchant_name,
+                date : date,
+                name : name,
             }}
-            return Transaction.deleteOne(query);
+            return Transaction.updateOne(queryCriteria, queryOperation)
         });
 
-        Transaction.updateMany()
+        Promise.all(updatePromises)
+        .then((results) => {
+            results.forEach((result, index) => {
+               
+            });
+        })
+        .catch((error) => {
+            console.error('Error updating products:', error);
+        });
     }
 
-    async deleteTransactions(transactionIdsToDelete){
-        const deletePromises = transactionIdsToDelete.map((deleteId, index) => {
-            const query = { transactionId: deleteId };
+    async deleteTransactions(transactionsToDeleteFromPlaid){
+
+
+        const deletePromises = transactionsToDeleteFromPlaid.map((payload, index) => {
+            const {
+                transaction_id 
+            } = payload;
+            const query = { transactionId: transaction_id };
             return Transaction.deleteOne(query);
         });
         
         Promise.all(deletePromises)
         .then((results) => {
             results.forEach((result, index) => {
-                console.log(`${result.deletedCount} transactions deleted for id ${transactionIdsToDelete[index]}`);
+                // console.log(`${result.deletedCount} transactions deleted for id`);
             });
         })
         .catch((error) => {
-            console.error('Error deleting products:', error);
+            console.error('Error deleting transactions:', error);
         });
     }
 
