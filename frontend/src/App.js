@@ -64,6 +64,7 @@ function App() {
 
 
   const simulateTransactionWebhook= async ()=>{
+    
     const response = await fetch(`${API_URL}/api/simulate_transaction_webhook`, {
       method: 'POST',
       headers: {
@@ -78,6 +79,21 @@ function App() {
     console.log(data)
   }
 
+  const test_api_call = async ()=>{
+    const response = await fetch(`${API_URL}/api/get_last_three_month_transaction`, {
+      method: 'GET',
+      headers: {
+            "Content-Type": "application/json",
+            // 'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      //body: JSON.stringify(requestData)
+    
+    });
+    const data = await response.json();
+    console.log(data)
+
+  }
+
   return  (
     <div>
       <button onClick={() => open()} >
@@ -89,6 +105,13 @@ function App() {
       Simulate Transaction Webhook
     </button>
     </div>
+
+    <div>
+    <button onClick={() => test_api_call()} >
+      Test API call
+    </button>
+    </div>
+
   </div>)
 };
 

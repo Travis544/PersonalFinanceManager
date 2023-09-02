@@ -31,8 +31,6 @@ const TransactionSchema = new mongoose.Schema({
     name: String,
     merchant : String,
     amount : Number, 
-    
-
     date : Date
 })
 
@@ -195,6 +193,15 @@ class MongoDbTransanctionService extends Service{
         console.log("UPDATED COUNT"+updatedCount)
         console.log("DELETED COUNT"+deletedcount)
     }
+
+    async getTransactionsForAccountSortedByDate(accountId){
+      // console.log("GET TRANSACTIONS FOR ACCOUNT")
+       const sortedResults =  await Transaction.find({accountId: accountId}).sort({date: 'asc'})
+       return sortedResults
+       
+    }
+
+    
 
     async saveTransactions(newTransactions){
         const newTransactionPromises = newTransactions.map((newTransaction, index) => {

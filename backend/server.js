@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require("express");
 const plaid = require("./plaid");
+
 const {
   Item,
   User,
@@ -193,7 +194,33 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
 
 
   app.get("/api/get_last_three_month_transaction", cors(corsOptions), async function (request, response){
-    const userId = request.query.id
-    const accountId = request.query.accountId
+    let accountId = request.query.accountId
+
+    accountId = "P6G8wz6QA5FRz8mZevrAhlv4bGG7VwConz9e7"
+    const transactionsSortedByDate = await transactionService.getTransactionsForAccountSortedByDate(accountId)
+    console.log(transactionsSortedByDate)
+    //run my partition algorithm
+    
+    yearToMonthTransaction = {}
+    for(let transaction of transactionsSortedByDate){
+      let dt = new Date(transaction.date);
+      yearInQuestion = dt.getFullYear()
+      monthInQuestion = dt.getMonth()
+      if (!(yearInQuestion in yearToMonthTransaction)) {
+        yearToMonthTransaction[yearInQuestion] = {}
+      }
+
+      if (!(monthInQuestion in yearToMonthTransaction[yearInQuestion])) {
+        yearToMonthTransaction[yearInQuestion][monthInQuestion] = []
+      }
+
+      yearToMonthTransaction[yearInQuestion][monthInQuestion].push(transaction)
+
+    }
+
+    console.log("PARTITION")
+    console.log(yearToMonthTransaction)
+    response.json({})
+
 
   })
