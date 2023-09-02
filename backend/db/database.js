@@ -81,6 +81,24 @@ class MongoDbItemService extends Service{
         return await User.findOne({username: username}).populate("items")
     }
 
+    async getItem(itemId) {
+        const results =  await User.aggregate([
+            {
+              $unwind: '$items' // Deconstruct the children array
+            },
+            {
+              $match: {
+                'items.itemId': itemId // Match by child ID
+              }
+            }
+        ])
+
+        if (results.length == 0){
+            return null
+        }
+        return results[0]["items"]
+    }
+
     async getItemByInstitutionId(user, institutionId){
       //  await mongoose.connect(this.uri);  
         const userFound =await User.findOne({username: user.username}).populate('items');
@@ -94,7 +112,6 @@ class MongoDbItemService extends Service{
         }).pop();
       // mongoose.connection.close()
         return itemFound
-
     }
 
     async saveItem(user, item){
@@ -116,12 +133,18 @@ class MongoDbItemService extends Service{
     }
 
     async saveLastCursor(itemId, lastCursor) {
-
-        console.log("SAVING LAST CURSOR")
-        console.log(lastCursor)
+        // console.log("SAVING LAST CURSOR")
+        // console.log(lastCursor)
+        // console.log(itemId)
         //await mongoose.connect(this.uri);   
-        const res = await Item.updateOne({itemId: itemId}, {lastCursor: lastCursor})
-        return res
+        // const itemFound = await Item.findOne({itemId: itemId})
+        // console.log(itemFound)
+        // const res = await Item.findOneAndUpdate({itemId: itemId}, {$set: {lastCursor: lastCursor}})
+        // console.log(res)
+        const updateRes = await User.updateOne({ 'items.itemId': itemId }, {$set: { 'items.$.lastCursor': lastCursor }})
+        // const item = this.getItem(itemId)
+        return updateRes
+        // return res
     }
 }
 
@@ -161,9 +184,16 @@ class MongoDbTransanctionService extends Service{
     }
 
     async applyTransactionUpdates(itemId, newTransactions, modifiedTransactions, deletedTransactions) {
-        await this.saveTransactions(newTransactions)
-        await this.updateTransactions(modifiedTransactions)
-        await this.deleteTransactions(deletedTransactions)
+        console.log("GIVEN NEW TRANSACTION "+newTransactions.length)
+        console.log("GIVEN MODIFIED TRANSACTION "+modifiedTransactions.length)
+        console.log("DELETED TRANSACTION "+deletedTransactions.length)
+        const insertedCount= await this.saveTransactions(newTransactions)
+        const updatedCount = await this.updateTransactions(modifiedTransactions)
+        const deletedcount = await this.deleteTransactions(deletedTransactions)
+        console.log("Update Complete:")
+        console.log("INSERTED COUNT"+insertedCount)
+        console.log("UPDATED COUNT"+updatedCount)
+        console.log("DELETED COUNT"+deletedcount)
     }
 
     async saveTransactions(newTransactions){
@@ -220,6 +250,8 @@ class MongoDbTransanctionService extends Service{
             console.error('Error inserting transactions:', error);
         });
 
+        return newTransactions.length
+
     }
 
 
@@ -262,11 +294,11 @@ class MongoDbTransanctionService extends Service{
         .catch((error) => {
             console.error('Error updating products:', error);
         });
+
+        return updatedTransactions.length
     }
 
     async deleteTransactions(transactionsToDeleteFromPlaid){
-
-
         const deletePromises = transactionsToDeleteFromPlaid.map((payload, index) => {
             const {
                 transaction_id 
@@ -284,6 +316,8 @@ class MongoDbTransanctionService extends Service{
         .catch((error) => {
             console.error('Error deleting transactions:', error);
         });
+
+        return transactionsToDeleteFromPlaid.length
     }
 
 }

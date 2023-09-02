@@ -65,7 +65,7 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
       client_name: 'Plaid Test App',
       products: ['auth', 'transactions'],
       language: 'en',
-      webhook: 'https://webhook.example.com',
+      webhook: process.env.WEBHOOK_URL,
       redirect_uri: 'http://localhost:3000/',
       country_codes: ['US'],
     };
@@ -97,12 +97,49 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
   }
 
   
-  app.post("/api/simulate_webhook", async (req, res)=>{
+  app.post("/api/simulate_transaction_webhook", async (req, res)=>{
+    console.log("SIMULATING WEBHOOK.....")
+    try{
+      //use travis token
+      const user = await itemService.getUser("travis")
+      const item = user.items[0]
+      const access_token = item.accessToken
+      const firewebhookResponse = await plaid.simulateTransactionWebhook(access_token)
     
-  })
-  
-  app.post('/api/receive_webhook', async (req, res, next)=>{
+     
+    } catch(error){
+      console.log(error)
+    }
 
+  })
+
+  app.post('/api/receive_webhook', async (req, res, next)=>{
+    console.log("RECEIVED WEBHOOK....")
+    console.dir(req.body, {colors:true, depth: null})
+    const product = req.body.webhook_code;
+    const itemId = req.body.item_id
+    switch(product) {
+      case 'SYNC_UPDATES_AVAILABLE': {
+        // Fired when new transactions data becomes available.
+        // const {
+        //   addedCount,
+        //   modifiedCount,
+        //   removedCount,
+        // } = await updateTransactions(plaidItemId);
+        // const { id: itemId } = await retrieveItemByPlaidItemId(plaidItemId);
+        // serverLogAndEmitSocket(`Transactions: ${addedCount} added, ${modifiedCount} modified, ${removedCount} removed`, itemId);
+        // break;
+        const itemFound = await itemService.getItem(itemId)
+        if (itemFound!= null) {
+          console.log("ITEM FOUND")
+          console.log(itemFound)
+          plaid.getTransactions(transactionService, itemId, itemFound.accessToken, itemFound.lastCursor);
+        }
+      
+       // 
+        
+      }
+    }
   })
 
 
@@ -151,3 +188,12 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
       }
     }
   });
+
+
+
+
+  app.get("/api/get_last_three_month_transaction", cors(corsOptions), async function (request, response){
+    const userId = request.query.id
+    const accountId = request.query.accountId
+
+  })

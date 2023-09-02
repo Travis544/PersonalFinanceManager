@@ -15,7 +15,7 @@ function App() {
      
     });
     const data = await response.json();
-   
+
     setLinkToken(data.link_token);
     
   };
@@ -63,11 +63,32 @@ function App() {
   });
 
 
+  const simulateTransactionWebhook= async ()=>{
+    const response = await fetch(`${API_URL}/api/simulate_transaction_webhook`, {
+      method: 'POST',
+      headers: {
+            "Content-Type": "application/json",
+            // 'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      //body: JSON.stringify(requestData)
+    
+    });
+
+    const data = await response.json();
+    console.log(data)
+  }
+
   return  (
     <div>
       <button onClick={() => open()} >
       Connect a bank account
     </button>
+
+    <div>
+    <button onClick={() => simulateTransactionWebhook()} >
+      Simulate Transaction Webhook
+    </button>
+    </div>
   </div>)
 };
 

@@ -1,9 +1,19 @@
-const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
+const { Configuration, PlaidApi, PlaidEnvironments, SandboxItemFireWebhookRequestWebhookCodeEnum, WebhookType } = require('plaid');
 class Plaid {
     constructor() {
         this.client = null
     }
     
+
+    async simulateTransactionWebhook(access_token){
+        const firewebhookResponse = this.client.sandboxItemFireWebhook({
+            access_token: access_token,
+            webhook_type: WebhookType.Transactions,
+            webhook_code: SandboxItemFireWebhookRequestWebhookCodeEnum.SyncUpdatesAvailable
+        })
+        return firewebhookResponse
+    }
+
     async createLinkToken(request){
        return await this.client.linkTokenCreate(request);
     }
