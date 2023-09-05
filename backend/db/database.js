@@ -6,7 +6,8 @@ const ItemSchema = new mongoose.Schema({
     itemId : String,
     accessToken : String,
     institutionId: String,
-    lastCursor : String
+    institutionName : String,
+    lastCursor : String,
 });
 
 
@@ -97,6 +98,11 @@ class MongoDbItemService extends Service{
         return results[0]["items"]
     }
 
+    async getItems(username){
+        let user = await this.getUser(username)
+        return user.items;
+    }
+
     async getItemByInstitutionId(user, institutionId){
       //  await mongoose.connect(this.uri);  
         const userFound =await User.findOne({username: user.username}).populate('items');
@@ -152,12 +158,12 @@ class MongoDbAccountService extends Service{
         super()
     }
 
-    async saveAccount(accountId, itemId, name, type, subType){
-        const account = new Account({accountId: accountId, itemId: itemId, name: name, type: type, subType: subType })
-        await account.save()
-    }
+    // async saveAccount(accountId, itemId, name, type, subType){
+    //     const account = new Account({ itemId: itemId, accountId: accountId, name: name, type: type, subType: subType })
+    //     await account.save()
+    // }
 
-    async saveAccounts(accountInfos) {
+    async saveAccounts(username, itemId, accountInfos) {
         const infoArr = accountInfos.map((accountInfo, index)=>{
             const {
                 id: accountId, 
@@ -167,10 +173,15 @@ class MongoDbAccountService extends Service{
             } = accountInfo
 
            // const account = new Account({accountId:accountId, name:name, type: type, subType:subType})
-           return {accountId:accountId, name:name, type: type, subtype:subtype}
+           return {itemId:itemId, accountId:accountId, name:name, type: type, subtype:subtype}
         })
 
         Account.insertMany(infoArr)
+    }
+
+    async getAccountsForItem(itemId){
+        const accounts = await Account.find({itemId: itemId})
+        return accounts
     }
 
 }
@@ -194,12 +205,16 @@ class MongoDbTransanctionService extends Service{
         console.log("DELETED COUNT"+deletedcount)
     }
 
-    async getTransactionsForAccountSortedByDate(accountId){
+    async getTransactionsForAccount(accountId){
       // console.log("GET TRANSACTIONS FOR ACCOUNT")
-       const sortedResults =  await Transaction.find({accountId: accountId}).sort({date: 'asc'})
+       const sortedResults =  await Transaction.find({accountId: accountId})
+       
+       //.sort({date: 'desc'})
        return sortedResults
        
     }
+
+    
 
     
 

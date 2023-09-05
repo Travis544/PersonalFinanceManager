@@ -58,23 +58,27 @@ app.get("/", function(request, response) {
 app.post('/api/create_link_token',cors(corsOptions),  async function (request, response) {
     // Get the client_user_id by searching for the current user
     //const user = await User.find(...);
+
+    let userId = "64ee7e5d9ae395bfde6e3794"
     const requestC = {
       user: {
         // This should correspond to a unique id for the current user.
-        client_user_id: "THIS IS A TEST"
+        client_user_id: userId
       },
-      client_name: 'Plaid Test App',
-      products: ['auth', 'transactions'],
+      client_name: 'Personal Finance Manager',
+      products: ['transactions'],
       language: 'en',
       webhook: process.env.WEBHOOK_URL,
-      redirect_uri: 'http://localhost:3000/',
+      redirect_uri: 'https://dc8d-104-33-32-2.ngrok-free.app',
       country_codes: ['US'],
     };
     try {
     //   const createTokenResponse = await client.linkTokenCreate(requestC);
     //   response.json(createTokenResponse.data);
+  
         const createResponse = await plaid.createLinkToken(requestC)
         response.json(createResponse.data);
+        console.log("CREATING LINK TOKEN SUCCESS")
     } catch (error) {
       // handle error
       console.log('error while fetching client token', error);
@@ -152,6 +156,7 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
     const publicToken = request.body.public_token;
     const institutionId = request.body.institution_id;
     const accounts = request.body.accounts
+    const institutionName = request.body.institution_name
     const username = "travis"
   
     // console.log(accounts)
@@ -175,10 +180,10 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
         // associated with the currently signed-in user
         const accessToken = plaidResponse.data.access_token;
         const itemID = plaidResponse.data.item_id;
-        
-        const item = new Item({itemId: itemID, accessToken: accessToken, institutionId: institutionId, lastCursor:null})
+       
+        const item = new Item({itemId: itemID, accessToken: accessToken, institutionId: institutionId, institutionName: institutionName, lastCursor:null})
         const saveRes = await itemService.saveItem( user,item)
-        const saveAccountRes = await accountService.saveAccounts(accounts)
+        const saveAccountRes = await accountService.saveAccounts(username, itemID, accounts)
         
         //this is a new user, so retrieve transactions and save to db.
         await plaid.getTransactions(transactionService, itemID, accessToken, null)
@@ -191,21 +196,36 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
   });
 
 
+  app.get("/api/accounts/:itemId", cors(corsOptions), async function (request, response){
+    console.log(request.params.itemId)
+    let itemId = request.params.itemId
+    const accounts = await accountService.getAccountsForItem(itemId)
+    console.log(accounts)
+    response.json({"accounts": accounts})
+  })
+
+  app.get("/api/items/:username", cors(corsOptions), async function (request, response){
+    console.log(request.params.username)
+    let username = request.params.username
+    const items = await itemService.getItems(username)
+    console.log("GOT ITEMS")
+    console.log(items)
+    response.json({"items": items})
+  })
 
 
-  app.get("/api/get_last_three_month_transaction", cors(corsOptions), async function (request, response){
-    let accountId = request.query.accountId
-
-    accountId = "P6G8wz6QA5FRz8mZevrAhlv4bGG7VwConz9e7"
-    const transactionsSortedByDate = await transactionService.getTransactionsForAccountSortedByDate(accountId)
-    console.log(transactionsSortedByDate)
+  app.get("/api/get_last_x_years_transactions_for_account/:accountId", cors(corsOptions), async function (request, response){
+    console.log(request.query)
+    console.log(request.params)
+    let accountId = request.params.accountId
+    let yearsToSelect = request.query.yearsToSelect
+    const transactionsSortedByDate = await transactionService.getTransactionsForAccount(accountId)
     //run my partition algorithm
-    
     yearToMonthTransaction = {}
     for(let transaction of transactionsSortedByDate){
       let dt = new Date(transaction.date);
       yearInQuestion = dt.getFullYear()
-      monthInQuestion = dt.getMonth()
+      monthInQuestion = dt.getMonth()+1
       if (!(yearInQuestion in yearToMonthTransaction)) {
         yearToMonthTransaction[yearInQuestion] = {}
       }
@@ -215,12 +235,24 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
       }
 
       yearToMonthTransaction[yearInQuestion][monthInQuestion].push(transaction)
-
     }
 
-    console.log("PARTITION")
-    console.log(yearToMonthTransaction)
-    response.json({})
+    // console.log("PARTITION")
+    // console.log(yearToMonthTransaction)
+   
+    let years = Object.keys(yearToMonthTransaction).sort().reverse();
+    console.log("YEARS")
+    console.log(years)
+    let finalResponse = {}
+    for (let i = 0; i < yearsToSelect; i++) {
+      // console.log(years[i])
 
+      // console.log(yearToMonthTransaction[years[i]])
 
+      if (i>=years.length) {
+        break
+      }
+      finalResponse[years[i]]=yearToMonthTransaction[years[i]]
+    }
+    response.json({data:finalResponse})
   })

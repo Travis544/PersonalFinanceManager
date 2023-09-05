@@ -62,8 +62,6 @@ class Plaid {
 
         await itemService.saveLastCursor(itemId,lastCursor )
         await transactionService.applyTransactionUpdates(itemId, added, modified, removed)
-       
-      
         
     }
 
@@ -93,7 +91,8 @@ class Plaid {
     
         const PLAID_SECRET =
         PLAID_ENV === 'development' ? PLAID_SECRET_DEVELOPMENT : PLAID_SECRET_SANDBOX;
-        
+        console.log("USING:")
+        console.log(PLAID_SECRET)
       
         const configuration = new Configuration({
             basePath: PlaidEnvironments[PLAID_ENV],

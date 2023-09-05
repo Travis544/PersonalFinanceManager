@@ -1,30 +1,29 @@
 
 import './App.css';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { UserContext } from './Context';
 // import {PlaidLink} from "react-plaid-link";
 import { usePlaidLink } from 'react-plaid-link';
+import {PieChart} from './charts/PieChart'
+import {ItemList} from './ItemList'
+import {API_URL} from "./Constants"
 
 function App() {
-  const API_URL = "http://127.0.0.1:3001"
+  const [user, setUser] = useState("travis")
   const [linkToken, setLinkToken] = useState(null);
- 
-  const generateToken = async () => {
-    console.log("GENERATE TOKEN")
-    const response = await fetch(`${API_URL}/api/create_link_token`, {
-      method: 'POST',
-     
-    });
-    const data = await response.json();
+  const [transactions, setTransactions] = useState({})
+  const [categorizeCount, setCategorizeCount] = useState({})
+  const [items, setItems] = useState([])
 
-    setLinkToken(data.link_token);
-    
-  };
+  const [isReady, setIsReady] = useState(false)
+
 
   const exchangePublicTokenForAccessToken= async (publicToken, metadata) =>{
 
     let requestData = {
       "public_token": publicToken,
       "institution_id":metadata.institution.institution_id,
+      "institution_name": metadata.institution.name,
       "accounts": metadata.accounts
     }
 
@@ -38,33 +37,51 @@ function App() {
 
     });
     const data = await response.json();
-    console.log(data)
+    // console.log(data)
   }
 
-  useEffect(() => {
+  const generateToken = useCallback(async () => {
+    console.log("GENERATE TOK EN")
+    const response = await fetch(`${API_URL}/api/create_link_token`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    console.log("GOT LINK TOKEN")
+    setLinkToken(data.link_token);
     
-    generateToken();
   }, []);
 
+  const getItemsForUser = useCallback(async ()=>{
+    const response = await fetch(`${API_URL}/api/items/${user}`, {
+        method: 'GET',
+        headers: {
+              "Content-Type": "application/json",
+        },
+    });
 
-  useEffect(()=>{
-    console.log(linkToken)
-  }, [linkToken])
+    const data = await response.json();
+      setItems(data.items)
+    }, [user])
+
+
+  useEffect(() => {
+    generateToken();
+    getItemsForUser()
+  }, [generateToken, getItemsForUser]);
+
 
 
   const { open, ready } = usePlaidLink({
     token: linkToken, 
-    onSuccess: (public_token, metadata) => {
+    onSuccess: async (public_token, metadata) => {
       // send public_token to server
       console.log(metadata)
-      exchangePublicTokenForAccessToken(public_token, metadata)
-
+      await exchangePublicTokenForAccessToken(public_token, metadata)
+      await getItemsForUser()
     },
   });
 
-
   const simulateTransactionWebhook= async ()=>{
-    
     const response = await fetch(`${API_URL}/api/simulate_transaction_webhook`, {
       method: 'POST',
       headers: {
@@ -79,27 +96,69 @@ function App() {
     console.log(data)
   }
 
-  const test_api_call = async ()=>{
-    const response = await fetch(`${API_URL}/api/get_last_three_month_transaction`, {
+  const getTransactions= async (accountId)=>{
+    const params = {
+      yearsToSelect: "2"
+    };
+
+    const paramString = new URLSearchParams(params).toString();
+    const response = await fetch(`${API_URL}/api/get_last_x_years_transactions_for_account/${accountId}?${paramString}`, {
       method: 'GET',
       headers: {
             "Content-Type": "application/json",
             // 'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      //body: JSON.stringify(requestData)
-    
+      },    
     });
     const data = await response.json();
+    console.log("DATA RECEIVED")
     console.log(data)
-
+    // setTransactions(data.data)
+    // console.log(Object.keys(transactions))
+    
+    selectYearToView(2023, 1, data.data)
   }
+
+  const selectYearToView=(year, month, transactions)=>{
+    const transactionsForYear = transactions[year][month]
+    // console.log("TRANSACTIONS FOR A YEAR")
+    // console.log(transactionsForYear)
+    const categoryData = categorizeTransactions(transactionsForYear)
+    console.log(categoryData)
+    setCategorizeCount(categoryData)
+  }
+
+  const categorizeTransactions=(monthlyTransactions)=>{
+    let categoryToSpending = {}
+    for(let transaction of monthlyTransactions) {
+     
+      console.log(transaction)
+      let personalFinanceCategory = transaction["personalFinanceCategory"]
+      let primaryCategory = personalFinanceCategory["primary"]
+      let amount = transaction["amount"]
+      if (amount < 0) {
+        continue
+      }
+      if (!(primaryCategory in categoryToSpending)) {
+       
+        categoryToSpending[primaryCategory] = amount
+      } else {
+        categoryToSpending[primaryCategory] += amount
+      }
+    }
+
+    let categoryData = [["Category", "Spending"]]
+    for (let category in categoryToSpending) {
+      categoryData.push([category, categoryToSpending[category]])
+    }
+    return categoryData
+  }
+
 
   return  (
     <div>
       <button onClick={() => open()} >
       Connect a bank account
     </button>
-
     <div>
     <button onClick={() => simulateTransactionWebhook()} >
       Simulate Transaction Webhook
@@ -107,9 +166,18 @@ function App() {
     </div>
 
     <div>
-    <button onClick={() => test_api_call()} >
-      Test API call
-    </button>
+      <button onClick={() => getTransactions()} >
+        Test API call
+      </button>
+    </div>
+
+    <div id="BankAndAccountWrapper">
+      <UserContext.Provider value={user} >
+        {/* <div>
+          <PieChart data={categorizeCount}/>
+        </div> */}
+        <ItemList items={items} accountSelectedCallback={getTransactions}/>
+      </UserContext.Provider>
     </div>
 
   </div>)
