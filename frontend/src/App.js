@@ -4,19 +4,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { UserContext } from './Context';
 // import {PlaidLink} from "react-plaid-link";
 import { usePlaidLink } from 'react-plaid-link';
-import {PieChart} from './charts/PieChart'
+
 import {ItemList} from './ItemList'
 import {API_URL} from "./Constants"
+import Dashboard from './Dashboard';
+import useGoogleCharts from './charts/useGoogleCharts';
 
 function App() {
   const [user, setUser] = useState("travis")
   const [linkToken, setLinkToken] = useState(null);
   const [transactions, setTransactions] = useState({})
-  const [categorizeCount, setCategorizeCount] = useState({})
   const [items, setItems] = useState([])
-
   const [isReady, setIsReady] = useState(false)
 
+  const google = useGoogleCharts();
 
   const exchangePublicTokenForAccessToken= async (publicToken, metadata) =>{
 
@@ -112,47 +113,13 @@ function App() {
     const data = await response.json();
     console.log("DATA RECEIVED")
     console.log(data)
-    // setTransactions(data.data)
+    setTransactions(data.data)
     // console.log(Object.keys(transactions))
     
-    selectYearToView(2023, 1, data.data)
+    
   }
 
-  const selectYearToView=(year, month, transactions)=>{
-    const transactionsForYear = transactions[year][month]
-    // console.log("TRANSACTIONS FOR A YEAR")
-    // console.log(transactionsForYear)
-    const categoryData = categorizeTransactions(transactionsForYear)
-    console.log(categoryData)
-    setCategorizeCount(categoryData)
-  }
-
-  const categorizeTransactions=(monthlyTransactions)=>{
-    let categoryToSpending = {}
-    for(let transaction of monthlyTransactions) {
-     
-      console.log(transaction)
-      let personalFinanceCategory = transaction["personalFinanceCategory"]
-      let primaryCategory = personalFinanceCategory["primary"]
-      let amount = transaction["amount"]
-      if (amount < 0) {
-        continue
-      }
-      if (!(primaryCategory in categoryToSpending)) {
-       
-        categoryToSpending[primaryCategory] = amount
-      } else {
-        categoryToSpending[primaryCategory] += amount
-      }
-    }
-
-    let categoryData = [["Category", "Spending"]]
-    for (let category in categoryToSpending) {
-      categoryData.push([category, categoryToSpending[category]])
-    }
-    return categoryData
-  }
-
+ 
 
   return  (
     <div>
@@ -179,6 +146,8 @@ function App() {
         <ItemList items={items} accountSelectedCallback={getTransactions}/>
       </UserContext.Provider>
     </div>
+    
+    <Dashboard google={google} yearAndMonthTransactions={transactions}/>
 
   </div>)
 };
