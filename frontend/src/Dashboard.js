@@ -1,9 +1,12 @@
+
+import './App.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import {PieChart} from './charts/PieChart'
 import {BarChart} from "./charts/BarChart"
 import HorizontalChart from './charts/HorizontalChart';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
+import TransactionTable from './tables/TransactionTable';
 
 export default function Dashboard({google, yearAndMonthTransactions}) {
 
@@ -117,12 +120,8 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
         let dataTable = parseCategoricalSpendingForEachMonthIntoDataTable(allCategories, categoryToSpendingForEachMonth)
         setCategorizeSpendingForYearDataTable(dataTable)
         setSelectedYear(year)
-                
-
         let selectedMonthlyTransactions = yearAndMonthTransactions[year][month]
-      
         let selectedMonthCategoricalSpending = calculateCategoricalSpendingForMonth(selectedMonthlyTransactions)
-        
         let monthlyCategorizedSpendingDataTable = parseCategoricalSpendingForOneMonthIntoDataTable(selectedMonthCategoricalSpending)
         setSelectedMonthCategoricalSpendingDataTable(monthlyCategorizedSpendingDataTable)
         setSelectedMonth(month)
@@ -152,12 +151,10 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
         }
     },[getLatestMonthForYear, viewChartsForGivenYearAndMonth, yearAndMonthTransactions])
 
-  
- 
-
     return  (
         <div>
             <div>
+                <p>Select Year: </p>
                 <Select
                     labelId="demo-select-small-label"
                     id="demo-select-small"
@@ -172,10 +169,16 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
             </div>
 
             {categorizeSpendingForYearDataTable&&
-            <div>
-                <PieChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
-                <HorizontalChart data={categorizeSpendingForYearDataTable} google={google}/>
-                <BarChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
+            <div >
+                <div id="chartContainer">
+                    <PieChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
+                    <BarChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
+                    <HorizontalChart data={categorizeSpendingForYearDataTable} google={google}/>
+                </div>
+               
+                <div>
+                    <TransactionTable monthlyTransactions={yearAndMonthTransactions[selectedYear][selectedMonth]}/>
+                </div>
             </div>
             
             }

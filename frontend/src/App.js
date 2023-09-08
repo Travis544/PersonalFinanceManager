@@ -96,7 +96,7 @@ function App() {
     });
 
     const data = await response.json();
-    console.log(data)
+    // console.log(data)
   }
 
   const getTransactions= async (accountId)=>{
@@ -113,8 +113,8 @@ function App() {
       },    
     });
     const data = await response.json();
-    console.log("DATA RECEIVED")
-    console.log(data)
+    // console.log("DATA RECEIVED")
+    // console.log(data)
     setTransactions(data.data)
     // console.log(Object.keys(transactions))
     

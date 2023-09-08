@@ -4,7 +4,10 @@ export function PieChart({google, data}) {
     const [chart, setChart] = useState(null);
     useEffect(() => {
         const chartOptions = {
-            title: "Monthly Spending",
+            title: "Monthly Spending Distribution",
+            width: 400,
+            height: 400,
+            legend: null
         }
 
         if(google){
