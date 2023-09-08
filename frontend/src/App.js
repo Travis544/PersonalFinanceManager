@@ -60,8 +60,10 @@ function App() {
         },
     });
 
-    const data = await response.json();
-      setItems(data.items)
+        const data = await response.json();
+        console.log("SETTING ITEMS FOR USER")
+        console.log(data.items)
+        setItems(data.items)
     }, [user])
 
 

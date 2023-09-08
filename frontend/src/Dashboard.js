@@ -2,12 +2,20 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {PieChart} from './charts/PieChart'
 import {BarChart} from "./charts/BarChart"
 import HorizontalChart from './charts/HorizontalChart';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+
 export default function Dashboard({google, yearAndMonthTransactions}) {
-  
-    
+
     const [categorizeSpendingForYearDataTable, setCategorizeSpendingForYearDataTable] = useState(null)
     const [selectedMonthCategoricalSpendingDataTable, setSelectedMonthCategoricalSpendingDataTable] = useState(null)
+    const [selectedYear, setSelectedYear] = useState("") 
+    const [selectedMonth, setSelectedMonth] = useState("") 
+    
+    console.log(yearAndMonthTransactions)
+
     const calculateCategoricalSpendingForMonth=(monthlyTransactions)=>{
+      
         let categoryToSpending = {}
         for(let transaction of monthlyTransactions) {
             let personalFinanceCategory = transaction["personalFinanceCategory"]
@@ -69,9 +77,9 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
         const dataTable = new google.visualization.DataTable();
         dataTable.addColumn("string", "Category")
         dataTable.addColumn("number", "Spending")
-        console.log("SELECTED")
+        // console.log("SELECTED")
         
-        console.table(categoryToSpendingForAMonth)
+        // console.table(categoryToSpendingForAMonth)
         for(let category of Object.keys(categoryToSpendingForAMonth)) {
             let spending = categoryToSpendingForAMonth[category]
             
@@ -83,54 +91,91 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
 
     
     const viewChartsForGivenYearAndMonth=useCallback((year, month, yearAndMonthTransactions)=>{
-       
+        // if (selectedYear === year && selectedMonth === month) {
+        //     return
+        // }
+
+        // console.log("GIVEN MONTH")
+        // console.log(month) 
         let allMonthlyTransactionForAYear = yearAndMonthTransactions[year]
         const categoryToSpendingForEachMonth = {}
         let allCategories = []
 
-        let selectedMonthCategoricalSpending = {}
+    
         for (let monthKey in allMonthlyTransactionForAYear) { 
             let monthlyTransactions = allMonthlyTransactionForAYear[monthKey]
             const categoryToSpending = calculateCategoricalSpendingForMonth(monthlyTransactions)
             let categories = Object.keys(categoryToSpending)
             allCategories = allCategories.concat(categories)
             categoryToSpendingForEachMonth[monthKey] = categoryToSpending   
-            if (month === monthKey) {
-                selectedMonthCategoricalSpending = categoryToSpending
-            }
+            // if (month === monthKey) {
+            //     selectedMonthCategoricalSpending = categoryToSpending
+            // }
         }
 
         allCategories = new Set(allCategories)
         let dataTable = parseCategoricalSpendingForEachMonthIntoDataTable(allCategories, categoryToSpendingForEachMonth)
-
-      
-        let monthlyCategorizedSpendingDataTable = parseCategoricalSpendingForOneMonthIntoDataTable(selectedMonthCategoricalSpending)
         setCategorizeSpendingForYearDataTable(dataTable)
-        setSelectedMonthCategoricalSpendingDataTable(monthlyCategorizedSpendingDataTable)
+        setSelectedYear(year)
+                
 
+        let selectedMonthlyTransactions = yearAndMonthTransactions[year][month]
+      
+        let selectedMonthCategoricalSpending = calculateCategoricalSpendingForMonth(selectedMonthlyTransactions)
+        
+        let monthlyCategorizedSpendingDataTable = parseCategoricalSpendingForOneMonthIntoDataTable(selectedMonthCategoricalSpending)
+        setSelectedMonthCategoricalSpendingDataTable(monthlyCategorizedSpendingDataTable)
+        setSelectedMonth(month)
+       
     }, [parseCategoricalSpendingForEachMonthIntoDataTable, parseCategoricalSpendingForOneMonthIntoDataTable])
     
+    const getLatestMonthForYear=useCallback((year, yearAndMonthTransactions)=>{
+        let monthlyTransactions = yearAndMonthTransactions[year]
+        let months = Object.keys(monthlyTransactions)
+        let latestMonth = months[months.length-1]
+        return latestMonth
+     }, [])
+
+     const getAvailableYears=()=>{
+        return Object.keys(yearAndMonthTransactions)
+     }
+ 
 
     useEffect(()=>{
         if (Object.keys(yearAndMonthTransactions).length > 0) {
-            let latestYear = Object.keys(yearAndMonthTransactions)[0]
-            let monthlyTransactions = yearAndMonthTransactions[latestYear]
-            let months = Object.keys(monthlyTransactions)
-            let latestMonth = months[months.length-1]
+            console.log("TRIGGERED")
+            let years =  Object.keys(yearAndMonthTransactions)
+            let latestYear = years[years.length-1]
+            let latestMonth = getLatestMonthForYear(latestYear, yearAndMonthTransactions)
             viewChartsForGivenYearAndMonth(latestYear, latestMonth, yearAndMonthTransactions)
+            
         }
-      
-    },[viewChartsForGivenYearAndMonth, yearAndMonthTransactions])
+    },[getLatestMonthForYear, viewChartsForGivenYearAndMonth, yearAndMonthTransactions])
 
+  
+ 
 
     return  (
         <div>
+            <div>
+                <Select
+                    labelId="demo-select-small-label"
+                    id="demo-select-small"
+                    value={selectedYear}
+                    label="Bank"
+                    onChange={(event)=>{viewChartsForGivenYearAndMonth(event.target.value, getLatestMonthForYear(event.target.value, yearAndMonthTransactions), yearAndMonthTransactions)}}
+                >
+                    {getAvailableYears().length > 0 
+                    && getAvailableYears().map((year) => 
+                    <MenuItem value={year} key={year}>{year}</MenuItem>)}
+                </Select>
+            </div>
+
             {categorizeSpendingForYearDataTable&&
             <div>
                 <PieChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
                 <HorizontalChart data={categorizeSpendingForYearDataTable} google={google}/>
                 <BarChart data={selectedMonthCategoricalSpendingDataTable} google={google}/>
-               
             </div>
             
             }

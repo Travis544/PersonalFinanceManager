@@ -21,7 +21,7 @@ export default function HorizontalChart({google, data}) {
 
         if(google){
             // Instantiate and draw our chart, passing in some options.
-            var chart = new google.visualization.BarChart(document.getElementById("barChart"));
+            var chart = new google.visualization.BarChart(document.getElementById("horizontalChart"));
            
             chart.draw(data, chartOptions);
             setChart(chart);
@@ -30,7 +30,7 @@ export default function HorizontalChart({google, data}) {
     }, [google, data]);
 
     return (
-        <div id="barChart" />
+        <div id="horizontalChart" />
     )
 
 }

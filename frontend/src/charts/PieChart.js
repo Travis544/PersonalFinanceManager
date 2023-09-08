@@ -7,10 +7,6 @@ export function PieChart({google, data}) {
             title: "Monthly Spending",
         }
 
-
-        
-
-
         if(google){
             // Instantiate and draw our chart, passing in some options.
             const newChart = new google.visualization.PieChart(document.getElementById('pizzaChart'));
