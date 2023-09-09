@@ -58,6 +58,18 @@ app.get("/", function(request, response) {
 app.post('/api/create_link_token',cors(corsOptions),  async function (request, response) {
     // Get the client_user_id by searching for the current user
     //const user = await User.find(...);
+    const PLAID_ENV = process.env.PLAID_ENV
+
+    const redirect_uri = PLAID_ENV == 'sandbox'
+      ? process.env.PLAID_SANDBOX_REDIRECT_URI
+      : process.env.PLAID_DEVELOPMENT_REDIRECT_URI
+
+    
+     // If user has entered a redirect uri in the .env file
+    // if (redirect_uri.indexOf('http') === 0) {
+    //   linkTokenParams.redirect_uri = redirect_uri;
+    // }
+
 
     let userId = "64ee7e5d9ae395bfde6e3794"
     const requestC = {
@@ -69,7 +81,7 @@ app.post('/api/create_link_token',cors(corsOptions),  async function (request, r
       products: ['transactions'],
       language: 'en',
       webhook: process.env.WEBHOOK_URL,
-      redirect_uri: 'https://dc8d-104-33-32-2.ngrok-free.app',
+      redirect_uri: redirect_uri,
       country_codes: ['US'],
     };
     try {

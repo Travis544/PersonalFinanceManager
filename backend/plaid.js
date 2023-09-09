@@ -74,9 +74,9 @@ class Plaid {
             transactionData["single_category"]= "N/A"
         }
 
-        console.log('SINGLE CATEGORY')
-        console.log(transactionData["single_category"])
-        console.log(transactionData["personal_finance_category"])
+        // console.log('SINGLE CATEGORY')
+        // console.log(transactionData["single_category"])
+        // console.log(transactionData["personal_finance_category"])
         return transactionData
     }
 
@@ -100,6 +100,7 @@ class Plaid {
             headers: {
                 'PLAID-CLIENT-ID': PLAID_CLIENT_ID,
                 'PLAID-SECRET': PLAID_SECRET,
+                'Plaid-Version': '2020-09-14',
             },
             },
         });

@@ -15,7 +15,7 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
     const [selectedYear, setSelectedYear] = useState("") 
     const [selectedMonth, setSelectedMonth] = useState("") 
     
-    console.log(yearAndMonthTransactions)
+    // console.log(yearAndMonthTransactions)
 
     const calculateCategoricalSpendingForMonth=(monthlyTransactions)=>{
       
@@ -80,9 +80,6 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
         const dataTable = new google.visualization.DataTable();
         dataTable.addColumn("string", "Category")
         dataTable.addColumn("number", "Spending")
-        // console.log("SELECTED")
-        
-        // console.table(categoryToSpendingForAMonth)
         for(let category of Object.keys(categoryToSpendingForAMonth)) {
             let spending = categoryToSpendingForAMonth[category]
             
@@ -94,12 +91,6 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
 
     
     const viewChartsForGivenYearAndMonth=useCallback((year, month, yearAndMonthTransactions)=>{
-        // if (selectedYear === year && selectedMonth === month) {
-        //     return
-        // }
-
-        // console.log("GIVEN MONTH")
-        // console.log(month) 
         let allMonthlyTransactionForAYear = yearAndMonthTransactions[year]
         const categoryToSpendingForEachMonth = {}
         let allCategories = []
@@ -121,13 +112,20 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
         setCategorizeSpendingForYearDataTable(dataTable)
         setSelectedYear(year)
         let selectedMonthlyTransactions = yearAndMonthTransactions[year][month]
+       
+        calculateMonthlyCategoricalSpending(month, selectedMonthlyTransactions)
+        
+    }, [parseCategoricalSpendingForEachMonthIntoDataTable, parseCategoricalSpendingForOneMonthIntoDataTable])
+    
+
+    //name this for now
+    const calculateMonthlyCategoricalSpending=(month, selectedMonthlyTransactions)=>{
         let selectedMonthCategoricalSpending = calculateCategoricalSpendingForMonth(selectedMonthlyTransactions)
         let monthlyCategorizedSpendingDataTable = parseCategoricalSpendingForOneMonthIntoDataTable(selectedMonthCategoricalSpending)
         setSelectedMonthCategoricalSpendingDataTable(monthlyCategorizedSpendingDataTable)
         setSelectedMonth(month)
-       
-    }, [parseCategoricalSpendingForEachMonthIntoDataTable, parseCategoricalSpendingForOneMonthIntoDataTable])
-    
+    }
+
     const getLatestMonthForYear=useCallback((year, yearAndMonthTransactions)=>{
         let monthlyTransactions = yearAndMonthTransactions[year]
         let months = Object.keys(monthlyTransactions)
@@ -138,11 +136,19 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
      const getAvailableYears=()=>{
         return Object.keys(yearAndMonthTransactions)
      }
+
+     const getAvailableMonths=()=>{
+        if (!selectedYear) {
+            return []
+        }
+      
+        return Object.keys(yearAndMonthTransactions[selectedYear])
+     }
  
 
     useEffect(()=>{
         if (Object.keys(yearAndMonthTransactions).length > 0) {
-            console.log("TRIGGERED")
+            // console.log("TRIGGERED")
             let years =  Object.keys(yearAndMonthTransactions)
             let latestYear = years[years.length-1]
             let latestMonth = getLatestMonthForYear(latestYear, yearAndMonthTransactions)
@@ -166,6 +172,19 @@ export default function Dashboard({google, yearAndMonthTransactions}) {
                     && getAvailableYears().map((year) => 
                     <MenuItem value={year} key={year}>{year}</MenuItem>)}
                 </Select>
+
+                <Select
+                    labelId="demo-select-small-label"
+                    id="demo-select-small"
+                    value={selectedMonth}
+                    label="Bank"
+                    onChange={(event)=>calculateMonthlyCategoricalSpending(event.target.value, yearAndMonthTransactions[selectedYear][event.target.value])}
+                >
+                    {getAvailableMonths().length > 0 
+                    && getAvailableMonths().map((month) => 
+                    <MenuItem value={month} key={month}>{month}</MenuItem>)}
+                </Select>
+
             </div>
 
             {categorizeSpendingForYearDataTable&&
